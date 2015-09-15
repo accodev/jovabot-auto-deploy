@@ -39,7 +39,7 @@ def handle_github_request(req):
     g = git.cmd.Git(GIT_DIR)
     git_ret = g.pull('origin', 'develop')
     # restart the jovabot service
-    service_ret = subprocess.call(['/usr/sbin/service', 'jovabot', 'restart'], shell=False)
+    service_ret = subprocess.call(['sudo', '/usr/sbin/service', 'jovabot', 'restart'], shell=False)
     return git_ret, service_ret
 
 
