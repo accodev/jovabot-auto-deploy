@@ -20,7 +20,6 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
-
 # CONFIGURATION
 GIT_DIR = '/home/acco/dev/jovabot/'
 
@@ -39,7 +38,7 @@ def handle_github_request(req):
     g = git.cmd.Git(GIT_DIR)
     git_ret = g.pull('origin', 'master')
     service_ret = None
-    if any_py_file_changed(req):
+    if any_file_changed(req):
         # restart the jovabot service
         service_ret = subprocess.call(['sudo', '/usr/sbin/service', 'jovabot', 'restart'], shell=False)
     return git_ret, service_ret
@@ -51,20 +50,24 @@ def confirm_payload(payload):
     return hmac.compare_digest('sha1=' + hashed.hexdigest(), payload.headers['X-Hub-Signature'])
 
 
-def any_py_file_changed(json):
-    py_count = 0
-    for commit in json.get('commits'):
-        py_count = py_count + find_py_file(commit.get('added'))
-        py_count = py_count + find_py_file(commit.get('removed'))
-        py_count = py_count + find_py_file(commit.get('modified'))
-    return py_count > 0
+def any_file_changed(req):
+    changed = 0
+    ref = req.get('ref')
+    if ref and 'master' in ref:  # only updates on master
+        hc = req.get('head_commit')
+        if hc:
+            file_list = hc.get('added') + hc.get('removed') + hc.get('modified')
+            changed = find_file_with_exts(file_list)
+    return changed > 0
 
 
-def find_py_file(file_list):
+def find_file_with_exts(file_list, ext=None):
+    if ext is None:
+        ext = ['.py']
     c = 0
     if file_list:
         for file in file_list:
-            if file.endswith('.py'):
+            if file.endswith(tuple(ext)):
                 c = c + 1
     return c
 
