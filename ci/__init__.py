@@ -2,7 +2,6 @@ from flask import Flask, request
 from hashlib import sha1
 import hmac
 import os
-import git
 import subprocess
 import logging
 import array
@@ -35,14 +34,14 @@ def root():
 
 def handle_github_request(req):
     # update from git repository
-    g = git.cmd.Git(os.environ['GIT_DIR'])
-    git_ret = g.pull('origin', os.environ['BRANCH_TO_UPDATE'])
+    os.chdir(os.environ['GIT_DIR'])
+    git_ret = subprocess.call(['/usr/bin/git', 'pull', 'origin', os.environ['BRANCH_TO_UPDATE']], shell=False)
     service_ret = None
     if any_file_changed(req):
         # restart the jovabot service
         service_ret = subprocess.call(['sudo', '/usr/sbin/service', 'jovabot', 'restart'], shell=False)
     # I know, it sucks
-    time.sleep(1)
+    time.sleep(5)
     # dispatch the channel update to jovabot
     update_ret = jovabot_channel_update(req)
     return update_ret, git_ret, service_ret
