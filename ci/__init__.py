@@ -8,22 +8,17 @@ import logging
 import array
 import requests
 import time
+import sys
+import codecs
+import socket
+import json
 
 app = Flask(__name__)
-logging.basicConfig(filename='ci_jovabot.log', filemode='w', level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-# console handler
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-
-logger.addHandler(ch)
-
-# CONFIGURATION
-GIT_DIR = '/home/acco/dev/jovabot/'
+sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
+logging.basicConfig(handlers=[logging.StreamHandler(sys.stdout)],
+                    level=logging.DEBUG,
+                    format='%(asctime)-15s|%(levelname)-8s|'
+                           '%(process)d|%(name)s|%(module)s|%(funcName)s::%(lineno)d|%(message)s')
 
 
 @app.route('/', methods=['POST'])
@@ -44,8 +39,8 @@ def handle_github_request(req):
     # I know, it sucks
     time.sleep(1)
     # update from git repository
-    g = git.cmd.Git(GIT_DIR)
-    git_ret = g.pull('origin', 'master')
+    g = git.cmd.Git(os.environ['GIT_DIR'])
+    git_ret = g.pull('origin', os.environ['BRANCH_TO_UPDATE'])
     service_ret = None
     if any_file_changed(req):
         # restart the jovabot service
@@ -62,10 +57,11 @@ def confirm_payload(payload):
 def any_file_changed(req):
     changed = 0
     if check_for_master_branch(req):
-        hc = req.get('head_commit')
-        if hc:
-            file_list = hc.get('added') + hc.get('removed') + hc.get('modified')
-            changed = find_file_with_exts(file_list)
+        for commit in req.get('commits'):
+            file_list = commit.get('added') + commit.get('removed') + commit.get('modified')
+            logging.info(file_list)
+            changed += find_file_with_exts(file_list)
+    logging.info('nr of files changed {}'.format(changed))
     return changed > 0
 
 
@@ -83,12 +79,14 @@ def find_file_with_exts(file_list, ext=None):
 def jovabot_channel_update(req):
     if check_for_master_branch(req):
         endpoint = socket.gethostname() + '/' + os.environ['JOVABOT_WEBAPP_NAME'] + '/channel-update'
-        return requests.post('{}/{}'.format(endpoint, os.environ('UPDATE_SECRET'), data=req.get('commits')))
+        d = json.dumps(req)
+        logging.debug(d)
+        return requests.post('https://{}/{}'.format(endpoint, os.environ['UPDATE_SECRET']), json=d)
 
 
 def check_for_master_branch(req):
     ref = req.get('ref')
-    if ref and 'master' in ref:  # only updates on master
+    if ref and os.environ['BRANCH_TO_UPDATE'] in ref:
         return ref
     return None
 
