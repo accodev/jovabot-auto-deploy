@@ -34,10 +34,6 @@ def root():
 
 
 def handle_github_request(req):
-    # dispatch the channel update to jovabot
-    update_ret = jovabot_channel_update(req)
-    # I know, it sucks
-    time.sleep(1)
     # update from git repository
     g = git.cmd.Git(os.environ['GIT_DIR'])
     git_ret = g.pull('origin', os.environ['BRANCH_TO_UPDATE'])
@@ -45,6 +41,10 @@ def handle_github_request(req):
     if any_file_changed(req):
         # restart the jovabot service
         service_ret = subprocess.call(['sudo', '/usr/sbin/service', 'jovabot', 'restart'], shell=False)
+    # I know, it sucks
+    time.sleep(1)
+    # dispatch the channel update to jovabot
+    update_ret = jovabot_channel_update(req)
     return update_ret, git_ret, service_ret
 
 
