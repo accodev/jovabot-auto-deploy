@@ -66,7 +66,7 @@ def any_file_changed(req):
 
 def find_file_with_exts(file_list, ext=None):
     if ext is None:
-        ext = ['.py']
+        ext = ['.py', 'HELP.md']
     c = 0
     if file_list:
         for file in file_list:
