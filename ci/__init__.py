@@ -34,7 +34,7 @@ def root():
 
 def handle_github_request(req):
     # update from git repository
-    os.chdir(os.environ['GIT_DIR'])
+    os.chdir('/path/of/git/repository')
     git_ret = subprocess.call(['/usr/bin/git', 'pull', 'origin', os.environ['BRANCH_TO_UPDATE']], shell=False)
     service_ret = None
     if any_file_changed(req):
